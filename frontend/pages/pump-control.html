@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pump Control</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 800px; }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Pump Control</h1>
+    <button id="manualOnBtn">Turn Pump ON</button>
+    <button id="manualOffBtn">Turn Pump OFF</button>
+    <p id="pumpStatus">Pump Status: OFF</p>
+  </div>
+
+  <script>
+    // Theme toggle persistence
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme','dark');
+        if (el) el.checked = true;
+      }
+      if (el) {
+        el.addEventListener('change', ()=>{
+          const mode = el.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : '');
+          localStorage.setItem('theme', mode);
+        });
+      }
+    })();
+
+    const pumpStatusEl = document.getElementById("pumpStatus");
+    const manualOnBtn = document.getElementById("manualOnBtn");
+    const manualOffBtn = document.getElementById("manualOffBtn");
+
+    function updatePumpStatus(status) {
+      pumpStatusEl.textContent = `Pump Status: ${status}`;
+      pumpStatusEl.style.color = status === "ON" ? "green" : "red";
+    }
+
+    manualOnBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/hardware/pump", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "ON" })
+        });
+        updatePumpStatus("ON");
+      } catch (err) {
+        console.error("Failed to turn pump ON:", err);
+      }
+    });
+
+    manualOffBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/hardware/pump", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "OFF" })
+        });
+        updatePumpStatus("OFF");
+      } catch (err) {
+        console.error("Failed to turn pump OFF:", err);
+      }
+    });
+
+    // Cross-page state sync
+    async function syncStatus(){
+      try {
+        const r = await fetch('/api/status');
+        const j = await r.json();
+        updatePumpStatus((j.pump_status || 'OFF').toUpperCase());
+      } catch(e) {}
+    }
+    syncStatus();
+    setInterval(syncStatus, 3000);
+  </script>
+</body>
+</html>

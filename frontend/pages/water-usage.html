@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Usage</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 800px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td { padding: 8px; border: 1px solid var(--border); text-align: center; }
+    th { background: var(--table-head); }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Water Usage</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Liters Used</th>
+        </tr>
+      </thead>
+      <tbody id="waterUsageTableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    // Theme toggle persistence
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme','dark');
+        if (el) el.checked = true;
+      }
+      if (el) {
+        el.addEventListener('change', ()=>{
+          const mode = el.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : '');
+          localStorage.setItem('theme', mode);
+        });
+      }
+    })();
+
+    // Mode toggle persistence + backend sync
+    (function(){
+      const el = document.getElementById('modeToggle');
+      async function syncFromBackend(){
+        try { const r = await fetch('/api/mode'); const j = await r.json(); if (el) el.checked = (j.mode === 'hardware'); } catch {}
+      }
+      async function updateBackend(){
+        try { await fetch('/api/mode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode: el.checked ? 'hardware' : 'simulation' }) }); } catch {}
+      }
+      syncFromBackend();
+      if (el) el.addEventListener('change', updateBackend);
+    })();
+
+    const tableBody = document.getElementById("waterUsageTableBody");
+
+    async function fetchWaterUsage() {
+      try {
+        const res = await fetch(`/api/water/usage?_=${Date.now()}`, { cache: "no-store" });
+        const data = await res.json();
+
+        tableBody.innerHTML = ""; // Clear old rows
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.timestamp}</td>
+            <td>${row.liters_used}</td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Error fetching water usage:", err);
+      }
+    }
+
+    // Refresh water usage every 5 seconds, avoid overlapping calls
+    let fetching = false;
+    async function tick() {
+      if (fetching) return;
+      fetching = true;
+      try { await fetchWaterUsage(); } finally { fetching = false; }
+    }
+    tick();
+    setInterval(tick, 5000);
+  </script>
+</body>
+</html>

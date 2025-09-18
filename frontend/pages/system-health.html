@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Health</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 900px; }
+    .grid { display:grid; grid-template-columns: repeat(2,1fr); gap:16px; }
+    .card { background: var(--overlay); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .ok { color: #2ecc71; font-weight:700; }
+    .bad { color: #e74c3c; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="system-health.html">🟢 System Health</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+  </div>
+
+  <div class="container">
+    <h1>System Health</h1>
+    <div class="grid">
+      <div class="card">
+        <div>Backend</div>
+        <div id="backend" class="ok">--</div>
+      </div>
+      <div class="card">
+        <div>Mode</div>
+        <div id="mode">--</div>
+      </div>
+      <div class="card">
+        <div>Simulation Running</div>
+        <div id="sim">--</div>
+      </div>
+      <div class="card">
+        <div>Pump Status</div>
+        <div id="pump">--</div>
+      </div>
+      <div class="card">
+        <div>Water Used (total)</div>
+        <div id="water">--</div>
+      </div>
+      <div class="card">
+        <div>Moisture Threshold</div>
+        <div id="thr">--</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); if (el) el.checked = true; }
+      if (el) el.addEventListener('change', ()=>{ const mode = el.checked ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', el.checked ? 'dark' : ''); localStorage.setItem('theme', mode); });
+    })();
+
+    async function load(){
+      try {
+        const r = await fetch('/api/system/summary');
+        const j = await r.json();
+        document.getElementById('backend').textContent = j.health && j.health.backend === 'ok' ? 'OK' : 'DOWN';
+        document.getElementById('backend').className = (j.health && j.health.backend === 'ok') ? 'ok' : 'bad';
+        document.getElementById('mode').textContent = j.mode;
+        document.getElementById('sim').textContent = j.simulation_running ? 'Yes' : 'No';
+        document.getElementById('pump').textContent = j.pump_status || 'OFF';
+        document.getElementById('water').textContent = (j.water_used||0).toFixed(1) + ' L';
+        document.getElementById('thr').textContent = (j.moisture_threshold||500).toFixed(0);
+      } catch(e) {}
+    }
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>
+
+

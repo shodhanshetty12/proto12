@@ -1,0 +1,44 @@
+:root {
+  --bg: #ffffff;
+  --text: #0b2a4a;
+  --muted: #4a6b8c;
+  --card: #f6fbff;
+  --border: #d9e6f2;
+  --table-head: #eef6ff;
+  --primary: #003366; /* dark blue primary */
+  --accent: #3399ff;  /* light blue highlight */
+  --primary-contrast: #ffffff;
+  --overlay: rgba(255,255,255,0.78);
+}
+
+[data-theme="dark"] {
+  --bg: #0a1222;
+  --text: #eaf2ff;
+  --muted: #9db3d6;
+  --card: #0f1a31;
+  --border: #25324a;
+  --table-head: #152344;
+  --primary: #003366;
+  --accent: #64b5f6;
+  --primary-contrast: #ffffff;
+  --overlay: rgba(10,18,34,0.78);
+}
+
+body { font-family: Inter, Arial, sans-serif; margin: 0; background: var(--bg) no-repeat center center fixed; background-size: cover; color: var(--text); min-height: 100vh; }
+h1, h2, h3, h4, h5, h6 { color: var(--text); }
+* { transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease; }
+h1 { color: var(--text); }
+button { padding: 10px 14px; margin-bottom: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--primary); color: var(--primary-contrast); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+button:hover { filter: brightness(1.05); }
+.container { background: var(--overlay); backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); padding: 20px; margin: 20px auto; }
+table { border-collapse: collapse; width: 100%; background: var(--card); border-radius: 10px; overflow: hidden; color: var(--text); }
+th, td { border: 1px solid var(--border); padding: 10px; text-align: center; }
+th { background: var(--table-head); color: var(--text); }
+nav a { color: #ffffff; }
+.navbar { background: var(--primary); padding: 12px; display:flex; align-items:center; gap: 16px; border-bottom: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.2); position: sticky; top:0; z-index: 100; }
+.navbar a { color: #ffffff; text-decoration: none; font-weight: 600; }
+.navbar a:hover { text-decoration: underline; }
+.spacer { flex: 1; }
+.toggle { color: #ffffff; font-weight: 600; }
+.status-info p { color: var(--text); }

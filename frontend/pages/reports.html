@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 1000px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+    th { background: var(--table-head); }
+    .actions { display:flex; gap:10px; margin-bottom: 12px; }
+    select { padding:6px 8px; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Reports</h1>
+    <div class="actions">
+      <select id="range">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+      </select>
+      <button id="refreshBtn">Refresh</button>
+      <button id="csvBtn">Export CSV</button>
+      <button id="pdfBtn">Export PDF</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Bucket</th>
+          <th>Avg Soil Moisture</th>
+          <th>Avg Temperature (°C)</th>
+          <th>Avg Humidity (%)</th>
+          <th>Total Liters</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); if (el) el.checked = true; }
+      if (el) el.addEventListener('change', ()=>{ const mode = el.checked ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', el.checked ? 'dark' : ''); localStorage.setItem('theme', mode); });
+    })();
+
+    async function load(){
+      const range = document.getElementById('range').value;
+      const r = await fetch(`/api/reports?range=${range}`);
+      const j = await r.json();
+      const tb = document.getElementById('tbody');
+      tb.innerHTML = '';
+      j.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${row.bucket}</td><td>${(row.avg_soil_moisture||0).toFixed(1)}</td><td>${(row.avg_temperature||0).toFixed(1)}</td><td>${(row.avg_humidity||0).toFixed(1)}</td><td>${(row.total_liters||0).toFixed(1)}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+    document.getElementById('refreshBtn').addEventListener('click', load);
+    document.getElementById('csvBtn').addEventListener('click', ()=>{ const range = document.getElementById('range').value; window.location.href = `/api/reports?range=${range}&export=csv`; });
+    document.getElementById('pdfBtn').addEventListener('click', ()=>{ const range = document.getElementById('range').value; window.location.href = `/api/reports?range=${range}&export=pdf`; });
+    load();
+  </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    nav { background: #3498db; padding: 12px; display: flex; justify-content: center; gap: 20px; border-radius: 6px; }
+    nav a { color: white; text-decoration: none; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .container { max-width: 1000px; margin: 20px auto; padding: 20px; background: var(--card); color: var(--text); border-radius: 10px; border: 1px solid var(--border); }
+    .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .charts { display:grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top:16px; }
+    .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; height:360px; display:flex; flex-direction:column; }
+    .chart-wrap { position:relative; flex:1; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span style="flex:1"></span>
+    <label style="color:var(--text); font-weight:600; margin-right:12px;">
+      <input type="checkbox" id="themeToggle"> Dark Mode
+    </label>
+    <label style="color:var(--text); font-weight:600;">
+      <input type="checkbox" id="modeToggle"> Hardware Mode
+    </label>
+  </nav>
+
+  <div class="container">
+    <h1>Generate Report</h1>
+    <div class="controls">
+      <label>Range
+        <select id="rangeSel">
+          <option value="24h">Last 24 hours</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+        </select>
+      </label>
+      <button id="btnGenerate">Generate</button>
+      <button id="btnPdf" class="secondary">Export PDF</button>
+    </div>
+
+    <div class="charts">
+      <div class="card"><h3>Water Usage</h3><div class="chart-wrap"><canvas id="chartWater"></canvas></div></div>
+      <div class="card"><h3>Moisture (Radar)</h3><div class="chart-wrap"><canvas id="chartMoistRadar"></canvas></div></div>
+      <div class="card"><h3>Temperature (Pie)</h3><div class="chart-wrap"><canvas id="chartTempPie"></canvas></div></div>
+      <div class="card"><h3>Humidity (Pie)</h3><div class="chart-wrap"><canvas id="chartHumPie"></canvas></div></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    // Theme toggle
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); if (el) el.checked = true; }
+      if (el) el.addEventListener('change', ()=>{ const mode = el.checked ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : ''); localStorage.setItem('theme', mode); });
+    })();
+    // Mode toggle
+    (function(){
+      const el = document.getElementById('modeToggle');
+      async function sync(){ try{ const r=await fetch('/api/mode'); const j=await r.json(); if(el) el.checked = (j.mode==='hardware'); }catch{}}
+      async function push(){ try{ await fetch('/api/mode',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode: el.checked?'hardware':'simulation' })}); }catch{}}
+      sync(); if (el) el.addEventListener('change', push);
+    })();
+
+    let charts = {};
+    function upsertChart(id, cfg){
+      const ctx = document.getElementById(id);
+      if (!charts[id]) charts[id] = new Chart(ctx, cfg);
+      else { charts[id].data = cfg.data; charts[id].update('none'); }
+    }
+
+    async function load(range){
+      try {
+        const [waterRes, sensorsRes, summaryRes] = await Promise.all([
+          fetch(`/api/metrics/water?range=${range}`),
+          fetch(`/api/metrics/sensors?range=${range}`),
+          fetch(`/api/metrics/summary?range=${range}`)
+        ]);
+        
+        if (!waterRes.ok || !sensorsRes.ok || !summaryRes.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        
+        const [water, sensors, summary] = await Promise.all([waterRes.json(), sensorsRes.json(), summaryRes.json()]);
+
+        // Water usage bar - show actual data or empty state
+        const waterLabels = water.length > 0 ? water.map(w=>w.bucket) : ['No Data'];
+        const waterValues = water.length > 0 ? water.map(w=>w.liters) : [0];
+        upsertChart('chartWater', {
+          type:'bar',
+          data:{ labels: waterLabels, datasets:[{ label:'Liters', data: waterValues, backgroundColor:'#1e88e5' }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, scales: { y: { beginAtZero: true } } }
+        });
+
+        // Moisture radar - use actual sensor data
+        const moist = sensors.length > 0 ? sensors.slice(0, 12) : [];
+        if (moist.length > 0) {
+          upsertChart('chartMoistRadar', {
+            type:'radar',
+            data:{ 
+              labels: moist.map(m=>m.timestamp.split(' ')[1]||m.timestamp), 
+              datasets:[{ 
+                label:'Soil Moisture', 
+                data: moist.map(m=>m.soil_moisture || 0), 
+                backgroundColor:'rgba(102,187,106,0.25)', 
+                borderColor:'#66bb6a' 
+              }] 
+            },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false, scales: { r: { beginAtZero: true } } }
+          });
+        } else {
+          upsertChart('chartMoistRadar', {
+            type:'radar',
+            data:{ labels: ['No Data'], datasets:[{ label:'Soil Moisture', data: [0], backgroundColor:'rgba(102,187,106,0.25)', borderColor:'#66bb6a' }] },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false }
+          });
+        }
+
+        // Temperature pie - based on actual data
+        const tVals = sensors.map(s=>s.temperature).filter(v=>v!=null && !isNaN(v));
+        if (tVals.length > 0) {
+          const tAvg = tVals.reduce((a,b)=>a+b,0) / tVals.length;
+          const belowAvg = tVals.filter(v=>v<=tAvg).length;
+          const aboveAvg = tVals.filter(v=>v>tAvg).length;
+          upsertChart('chartTempPie', {
+            type:'pie',
+            data:{ 
+              labels:[`Below Avg (${belowAvg})`,`Above Avg (${aboveAvg})`], 
+              datasets:[{ 
+                data:[belowAvg, aboveAvg], 
+                backgroundColor:['#90caf9','#1e88e5'] 
+              }] 
+            },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false }
+          });
+        } else {
+          upsertChart('chartTempPie', {
+            type:'pie',
+            data:{ labels: ['No Data'], datasets:[{ data: [1], backgroundColor:['#cccccc'] }] },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false }
+          });
+        }
+
+        // Humidity pie - based on actual data
+        const hVals = sensors.map(s=>s.humidity).filter(v=>v!=null && !isNaN(v));
+        if (hVals.length > 0) {
+          const hAvg = hVals.reduce((a,b)=>a+b,0) / hVals.length;
+          const belowAvg = hVals.filter(v=>v<=hAvg).length;
+          const aboveAvg = hVals.filter(v=>v>hAvg).length;
+          upsertChart('chartHumPie', {
+            type:'pie',
+            data:{ 
+              labels:[`Below Avg (${belowAvg})`,`Above Avg (${aboveAvg})`], 
+              datasets:[{ 
+                data:[belowAvg, aboveAvg], 
+                backgroundColor:['#ce93d8','#8e24aa'] 
+              }] 
+            },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false }
+          });
+        } else {
+          upsertChart('chartHumPie', {
+            type:'pie',
+            data:{ labels: ['No Data'], datasets:[{ data: [1], backgroundColor:['#cccccc'] }] },
+            options:{ responsive:true, maintainAspectRatio:false, animation:false }
+          });
+        }
+
+        return { water, sensors, summary };
+      } catch (error) {
+        console.error('Error loading reports data:', error);
+        // Show error charts
+        upsertChart('chartWater', {
+          type:'bar',
+          data:{ labels: ['Error'], datasets:[{ label:'Liters', data: [0], backgroundColor:'#ffcdd2' }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:false }
+        });
+        upsertChart('chartMoistRadar', {
+          type:'radar',
+          data:{ labels: ['Error'], datasets:[{ label:'Soil Moisture', data: [0], backgroundColor:'rgba(255,205,210,0.25)', borderColor:'#f44336' }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:false }
+        });
+        upsertChart('chartTempPie', {
+          type:'pie',
+          data:{ labels: ['Error'], datasets:[{ data: [1], backgroundColor:['#ffcdd2'] }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:false }
+        });
+        upsertChart('chartHumPie', {
+          type:'pie',
+          data:{ labels: ['Error'], datasets:[{ data: [1], backgroundColor:['#ffcdd2'] }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:false }
+        });
+        return { water: [], sensors: [], summary: {} };
+      }
+    }
+
+    async function generate(){
+      const range = document.getElementById('rangeSel').value;
+      await load(range);
+    }
+
+    async function exportPdf(){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'a4' });
+      const range = document.getElementById('rangeSel').value;
+      doc.setFontSize(14); doc.text(`Smart Irrigation Report (${range})`, 40, 40);
+      // Add charts as images
+      const ids = ['chartWater','chartMoistRadar','chartTempPie','chartHumPie'];
+      let y = 70;
+      for (const id of ids) {
+        const canvas = document.getElementById(id);
+        const img = canvas.toDataURL('image/png', 1.0);
+        doc.addImage(img, 'PNG', 40, y, 515, 220, undefined, 'FAST');
+        y += 230;
+        if (y > 760) { doc.addPage(); y = 60; }
+      }
+      doc.save(`smart_irrigation_report_${range}.pdf`);
+    }
+
+    document.getElementById('btnGenerate').addEventListener('click', generate);
+    document.getElementById('btnPdf').addEventListener('click', exportPdf);
+    generate();
+  </script>
+</body>
+</html>
+
+

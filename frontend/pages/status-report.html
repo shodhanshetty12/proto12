@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Report</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 1100px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: stretch; }
+    .card { background: var(--overlay); padding: 16px; border-radius: 10px; border: 1px solid var(--border); height: 360px; display:flex; flex-direction:column; }
+    h2 { margin: 0 0 10px; font-size: 18px; color: var(--text); }
+    .chart-wrap { position: relative; flex:1; min-height: 0; }
+    canvas { width: 100% !important; height: 100% !important; display:block; }
+    .meters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .meter { padding: 12px; border-radius: 10px; background: var(--overlay); border: 1px solid var(--border); }
+    .value { font-size: 28px; font-weight: 700; color: var(--text); }
+    .label { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>24h Status Report</h1>
+    <div class="grid">
+      <div class="card"><h2>Water Usage</h2><div class="chart-wrap"><canvas id="waterChart"></canvas></div></div>
+      <div class="card"><h2>Soil Moisture</h2><div class="chart-wrap"><canvas id="moistureChart"></canvas></div></div>
+      <div class="card"><h2>Temperature</h2><div class="chart-wrap"><canvas id="tempChart"></canvas></div></div>
+      <div class="card"><h2>Humidity</h2><div class="chart-wrap"><canvas id="humChart"></canvas></div></div>
+    </div>
+    <div class="meters" style="margin-top:20px;">
+      <div class="meter"><div class="label">Current Temperature</div><div id="tempNow" class="value">-- °C</div></div>
+      <div class="meter"><div class="label">Current Humidity</div><div id="humNow" class="value">-- %</div></div>
+      <div class="meter"><div class="label">Current Moisture</div><div id="moistNow" class="value">--</div></div>
+      <div class="meter"><div class="label">Total Water (24h)</div><div id="waterNow" class="value">-- L</div></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Theme toggle persistence
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme','dark');
+        if (el) el.checked = true;
+      }
+      if (el) {
+        el.addEventListener('change', ()=>{
+          const mode = el.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : '');
+          localStorage.setItem('theme', mode);
+        });
+      }
+    })();
+
+    const tempNow = document.getElementById('tempNow');
+    const humNow = document.getElementById('humNow');
+    const moistNow = document.getElementById('moistNow');
+    const waterNow = document.getElementById('waterNow');
+
+    function newChart(ctx, label, labels, values, color) {
+      return new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label, data: values, borderColor: color, backgroundColor: 'rgba(51,153,255,0.12)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, animation:false, scales: { x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted'), maxRotation:0, autoSkip:true } }, y: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted') } } }, plugins: { legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') } } } }
+      });
+    }
+
+    async function loadData() {
+      try {
+        const [waterRes, sensorsRes, summaryRes] = await Promise.all([
+          fetch('/api/metrics/water?range=24h'),
+          fetch('/api/metrics/sensors?range=24h'),
+          fetch('/api/metrics/summary?range=24h')
+        ]);
+        
+        if (!waterRes.ok || !sensorsRes.ok || !summaryRes.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        
+        const water = await waterRes.json();
+        const sensors = await sensorsRes.json();
+        const summary = await summaryRes.json();
+
+        const waterLabels = water.map(r => r.bucket);
+        const waterValues = water.map(r => r.liters);
+        const totalWater = waterValues.reduce((a,b) => a + b, 0);
+        waterNow.textContent = `${totalWater.toFixed(1)} L`;
+
+        const mLabels = sensors.map(r => r.timestamp);
+        const moist = sensors.map(r => r.soil_moisture);
+        const temp = sensors.map(r => r.temperature);
+        const hum = sensors.map(r => r.humidity);
+
+        // Update current values from latest sensor data or summary
+        if (sensors.length > 0) {
+          const last = sensors[sensors.length - 1];
+          tempNow.textContent = `${(last.temperature || 0).toFixed(1)} °C`;
+          humNow.textContent = `${(last.humidity || 0).toFixed(1)} %`;
+          moistNow.textContent = `${(last.soil_moisture || 0).toFixed(0)}`;
+        } else if (summary.total_rows > 0) {
+          moistNow.textContent = `${(summary.moisture?.avg || 0).toFixed(0)}`;
+          // No reliable temp/hum avg in summary; fallback to '--'
+          tempNow.textContent = '-- °C';
+          humNow.textContent = '-- %';
+        } else {
+          tempNow.textContent = '-- °C';
+          humNow.textContent = '-- %';
+          moistNow.textContent = '--';
+        }
+
+        // Create charts once and update in-place
+        window._charts = window._charts || {};
+        const cfgs = [
+          { id:'waterChart', label:'Liters', labels: waterLabels, data: waterValues, color:'#29b6f6' },
+          { id:'moistureChart', label:'Soil Moisture', labels: mLabels, data: moist, color:'#66bb6a' },
+          { id:'tempChart', label:'Temperature', labels: mLabels, data: temp, color:'#ef5350' },
+          { id:'humChart', label:'Humidity', labels: mLabels, data: hum, color:'#ab47bc' },
+        ];
+        for (const c of cfgs) {
+          if (!window._charts[c.id]) {
+            window._charts[c.id] = newChart(document.getElementById(c.id), c.label, c.labels, c.data, c.color);
+          } else {
+            const chart = window._charts[c.id];
+            chart.data.labels = c.labels;
+            chart.data.datasets[0].data = c.data;
+            chart.update('none');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading status data:', error);
+        // Show error state
+        tempNow.textContent = 'Error';
+        humNow.textContent = 'Error';
+        moistNow.textContent = 'Error';
+        waterNow.textContent = 'Error';
+      }
+    }
+
+    // Load data immediately and then every 5 seconds
+    loadData();
+    setInterval(loadData, 5000);
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Irrigation Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background-image: url('wallpaper.jpg'); }
+    .container { max-width: 900px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .status-info p {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .controls button {
+      padding: 10px 15px;
+      margin-right: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .controls label {
+      margin-left: 10px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <div class="navbar">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="pages/pump-control.html">⚙ Pump Control</a>
+    <a href="pages/water-usage.html">💧 Water Usage</a>
+    <a href="pages/status-report.html">📊 Status Report</a>
+    <a href="pages/notifications.html">🔔 Notifications</a>
+    <a href="pages/reports.html">🧾 Reports</a>
+    <a href="pages/settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Smart Irrigation Dashboard</h1>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="startBtn">Start Simulation</button>
+      <button id="stopBtn">Stop Simulation</button>
+      <label>
+        <input type="checkbox" id="autoModeToggle"> Auto Pump Mode
+      </label>
+      <label>
+        <input type="checkbox" id="autoScrollToggle"> Auto Scroll
+      </label>
+    </div>
+
+    <!-- Pump and Water Usage -->
+    <div class="status-info">
+      <p id="pumpStatus" style="color:red">Pump Status: OFF</p>
+      <p id="waterUsage">Water Used: 0 L</p>
+    </div>
+
+    <!-- Simulation Data Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Soil Moisture</th>
+          <th>Temperature</th>
+          <th>Humidity</th>
+        </tr>
+      </thead>
+      <tbody id="simulationTableBody"></tbody>
+    </table>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- Load external JS -->
+  <script src="app.js"></script>
+  <script>
+    document.body.style.backgroundImage = "url('wallpaper.jpg')";
+    // Theme toggle persistence
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme','dark');
+        if (el) el.checked = true;
+      }
+      if (el) {
+        el.addEventListener('change', ()=>{
+          const mode = el.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : '');
+          localStorage.setItem('theme', mode);
+        });
+      }
+    })();
+
+    // Mode toggle persistence + backend sync
+    (function(){
+      const el = document.getElementById('modeToggle');
+      async function syncFromBackend(){
+        try { const r = await fetch('/api/mode'); const j = await r.json(); if (el) el.checked = (j.mode === 'hardware'); } catch {}
+      }
+      async function updateBackend(){
+        try { await fetch('/api/mode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode: el.checked ? 'hardware' : 'simulation' }) }); } catch {}
+      }
+      syncFromBackend();
+      if (el) el.addEventListener('change', updateBackend);
+    })();
+  </script>
+</body>
+</html>

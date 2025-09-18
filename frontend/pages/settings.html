@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 800px; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Settings</h1>
+    <div style="display:grid; gap:16px;">
+      <label><input type="checkbox" id="darkToggle"> Enable Dark Mode</label>
+      <label><input type="checkbox" id="hardwareToggle"> Enable Hardware Mode</label>
+      <label>Moisture Threshold (Pump ON below): <input id="moistThreshold" type="number" min="0" max="1000" value="500"></label>
+      <label><input type="checkbox" id="autoMode"> Auto Pump Mode</label>
+      <button id="saveBtn">Save Settings</button>
+    </div>
+  </div>
+  <script>
+    // Apply theme initial
+    (function(){
+      const dark = localStorage.getItem('theme') === 'dark';
+      if (dark) document.documentElement.setAttribute('data-theme','dark');
+      const el = document.getElementById('darkToggle'); if (el) el.checked = dark;
+    })();
+    // Sync toggles with backend status
+    async function sync(){
+      try { 
+        const r1 = await fetch('/api/status'); const j = await r1.json();
+        document.getElementById('hardwareToggle').checked = (j.mode === 'hardware');
+        const r2 = await fetch('/api/settings'); const s = await r2.json();
+        document.getElementById('moistThreshold').value = Number(s.moisture_threshold || 500);
+        document.getElementById('autoMode').checked = !!s.auto_mode;
+      } catch{}
+    }
+    sync();
+    document.getElementById('darkToggle').addEventListener('change', (e)=>{
+      const mode = e.target.checked ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', e.target.checked ? 'dark' : '');
+      localStorage.setItem('theme', mode);
+    });
+    document.getElementById('hardwareToggle').addEventListener('change', async (e)=>{
+      try { await fetch('/api/mode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode: e.target.checked ? 'hardware' : 'simulation' }) }); } catch{}
+    });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      try {
+        const payload = {
+          moisture_threshold: Number(document.getElementById('moistThreshold').value || 500),
+          auto_mode: document.getElementById('autoMode').checked
+        };
+        await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        alert('Settings saved');
+      } catch(e) { alert('Failed to save'); }
+    });
+  </script>
+</body>
+</html>

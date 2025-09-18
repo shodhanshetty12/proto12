@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { background-image: url('../wallpaper.jpg'); }
+    .container { max-width: 900px; }
+    .list { display: grid; gap: 10px; }
+    .item { padding: 12px; border-radius: 10px; background: var(--overlay); border: 1px solid var(--border); }
+    .time { font-size: 12px; color: var(--muted); }
+    .type { font-weight: 700; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="../index.html">🏠 Dashboard</a>
+    <a href="pump-control.html">⚙ Pump Control</a>
+    <a href="water-usage.html">💧 Water Usage</a>
+    <a href="status-report.html">📊 Status Report</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="reports.html">🧾 Reports</a>
+    <a href="settings.html">🔧 Settings</a>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="themeToggle"> Dark</label>
+    <label class="toggle"><input type="checkbox" id="modeToggle"> Hardware</label>
+  </div>
+
+  <div class="container">
+    <h1>Notifications</h1>
+    <div id="list" class="list"></div>
+  </div>
+
+  <script>
+    (function(){
+      const el = document.getElementById('themeToggle');
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); if (el) el.checked = true; }
+      if (el) el.addEventListener('change', ()=>{ const mode = el.checked ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', el.checked ? 'dark' : ''); localStorage.setItem('theme', mode); });
+    })();
+
+    async function load(){
+      try {
+        const r = await fetch('/api/notifications');
+        const j = await r.json();
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        j.forEach(n => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `<div><span class="type">${n.type?.toUpperCase() || 'INFO'}</span>${n.message}</div><div class="time">${n.timestamp}</div>`;
+          list.appendChild(div);
+        });
+      } catch(e) {}
+    }
+    load();
+    setInterval(load, 10000);
+  </script>
+</body>
+</html>
+
+
